@@ -1,0 +1,5 @@
+bin/
+*.exe
+.env
+*.xlsx
+!scripts/sample_data/sample_options.xlsx
