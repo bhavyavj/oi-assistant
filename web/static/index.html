@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OI Assistant • Local • Insightful</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <!-- Top Navigation -->
+    <nav class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-x-4">
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-chart-line text-white text-2xl"></i>
+                        </div>
+                        <span class="title-font text-3xl font-semibold tracking-tighter">OI Assistant</span>
+                    </div>
+                    <div class="hidden md:flex items-center px-3 py-1 rounded-full bg-emerald-900/30 text-emerald-400 text-xs font-mono tracking-widest">
+                        LOCAL • PRIVATE • INSTANT
+                    </div>
+                </div>
+                <div class="flex items-center gap-x-3">
+                    <div class="flex items-center gap-x-2 px-3 py-1.5 bg-slate-900 rounded-3xl border border-slate-800 text-sm">
+                        <div id="health-dot" class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span id="health-text" class="text-emerald-400 text-xs font-medium">Connected</span>
+                    </div>
+                    <button onclick="toggleTheme()" class="px-3 py-1.5 flex items-center gap-x-2 text-sm bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-3xl transition-all">
+                        <i class="fa-solid fa-moon" id="theme-icon"></i>
+                    </button>
+                    <a href="#" class="text-slate-400 hover:text-white transition-colors p-2">
+                        <i class="fa-brands fa-github text-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+
+
+    <div class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- Hero -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10">
+            <div>
+                <h1 class="text-6xl md:text-7xl font-semibold tracking-tighter title-font leading-none text-white">
+                    Turn raw option<br>chain data into<br>clear decisions.
+                </h1>
+                <p class="mt-4 max-w-md text-xl text-slate-400">Upload your broker CSV. Get PCR, max pain, IV skew, and expiry-level OI breakdowns instantly.</p>
+                <div class="mt-6 flex items-center gap-x-4">
+                    <button onclick="document.getElementById('upload-section').scrollIntoView({behavior:'smooth'})"
+                            class="inline-flex items-center gap-x-3 bg-white hover:bg-slate-100 text-slate-900 font-semibold px-8 py-4 rounded-3xl shadow-lg text-lg">
+                        <span>Get started</span><i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <button onclick="quickDemo()" class="inline-flex items-center gap-x-2 px-6 py-4 text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                        <i class="fa-solid fa-play"></i><span>See demo</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+            <!-- Left: Upload + Fetch -->
+            <div class="xl:col-span-5">
+                <div id="upload-section" class="premium-card bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-5">
+                        <div>
+                            <span class="section-header">DATA INPUT</span>
+                            <h3 class="text-2xl font-semibold tracking-tight">Upload or Fetch</h3>
+                        </div>
+                        <i class="fa-solid fa-upload text-3xl text-emerald-500/60"></i>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Symbol</label>
+                        <input id="symbol-input" type="text" value="NIFTY"
+                               class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 text-white px-4 py-[13px] rounded-2xl text-lg font-medium outline-none transition-all">
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <div onclick="setQuickSymbol('NIFTY')"     class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">NIFTY</div>
+                            <div onclick="setQuickSymbol('BANKNIFTY')" class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">BANKNIFTY</div>
+                            <div onclick="setQuickSymbol('RELIANCE')"  class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">RELIANCE</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Option Chain File</label>
+                        <div id="drop-zone" class="group border-2 border-dashed border-slate-700 hover:border-emerald-500 transition-all bg-slate-950 rounded-3xl p-8 text-center cursor-pointer">
+                            <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls">
+                            <div class="flex flex-col items-center">
+                                <div class="w-12 h-12 bg-slate-800 group-hover:bg-emerald-900 transition-colors rounded-2xl flex items-center justify-center mb-4">
+                                    <i class="fa-solid fa-file-upload text-2xl text-emerald-400"></i>
+                                </div>
+                                <div class="font-semibold text-white">Drop your CSV here</div>
+                                <div class="text-sm text-slate-400 mt-1">or click to browse</div>
+                                <div class="mt-3 text-[10px] px-3 py-1 bg-slate-900 rounded-full text-slate-400">Direct broker CSVs supported</div>
+                            </div>
+                        </div>
+                        <div id="file-name" class="hidden mt-3 px-4 py-2.5 bg-emerald-950 text-emerald-400 text-sm font-medium rounded-2xl items-center gap-x-2">
+                            <i class="fa-solid fa-file"></i>
+                            <span id="selected-file-name" class="truncate"></span>
+                            <button onclick="clearFile(event)" class="ml-auto text-emerald-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <button onclick="uploadFile()"
+                                class="w-full flex items-center justify-center gap-x-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 rounded-3xl text-lg">
+                            <i class="fa-solid fa-cloud-upload"></i><span>Upload &amp; Process</span>
+                        </button>
+                        <div id="upload-status" class="mt-3 text-sm min-h-[22px]"></div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-500">
+                        Download CSVs from <a href="https://www.nseindia.com/option-chain" target="_blank" class="text-emerald-700 hover:text-emerald-500 underline">nseindia.com/option-chain</a> and upload above.
+                    </div>
+                </div>
+
+                <!-- Hidden analyze input -->
+                <input type="hidden" id="analyze-symbol" value="NIFTY">
+
+                <div class="mt-5">
+                    <div class="text-xs font-semibold text-slate-400 px-1 mb-2">QUICK SYMBOLS</div>
+                    <div class="flex flex-wrap gap-2">
+                        <div onclick="setQuickSymbol('NIFTY')"     class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">NIFTY</div>
+                        <div onclick="setQuickSymbol('BANKNIFTY')" class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">BANKNIFTY</div>
+                        <div onclick="setQuickSymbol('FINNIFTY')"  class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">FINNIFTY</div>
+                        <div onclick="setQuickSymbol('RELIANCE')"  class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">RELIANCE</div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-xs font-semibold text-slate-400 px-1 mb-2">RECENT</div>
+                        <div id="recent-symbols" class="flex flex-wrap gap-2 text-sm"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Results -->
+            <div class="xl:col-span-7">
+                <div id="results-area" class="premium-card bg-slate-900 border border-slate-800 rounded-3xl min-h-[580px] overflow-hidden">
+                    <div id="results-placeholder" class="h-full flex flex-col items-center justify-center p-8 text-center">
+                        <div class="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center mb-5">
+                            <i class="fa-solid fa-magnifying-glass-chart text-4xl text-emerald-500/70"></i>
+                        </div>
+                        <div class="font-semibold text-2xl tracking-tight">Ready for insights</div>
+                        <p class="max-w-xs mt-3 text-slate-400">Upload an option chain file or fetch live data to see analysis here.</p>
+                    </div>
+                    <div id="results-content" class="hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 flex flex-wrap items-center justify-between text-xs text-slate-500 px-2">
+            <div>Data cached for 24h in local Redis • Rule-based analysis + optional LLM</div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
