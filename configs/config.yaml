@@ -4,14 +4,14 @@ server:
   write_timeout: 60s
 
 redis:
-  addr: "redis:6379"
+  addr: "localhost:6379"
   password: ""
   db: 0
   ttl: 24h
 
 llm:
   provider: "ollama"       # ollama | openai
-  openai_api_key: ""       # set via env: OPENAI_API_KEY
+  # openai_api_key: set via env OPENAI_API_KEY — never put secrets in config files
   openai_model: "gpt-3.5-turbo"
   ollama_url: "http://ollama:11434"
   ollama_model: "llama3"

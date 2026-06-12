@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,11 +16,10 @@ import (
 	"github.com/bhavyavj/oi-assistant/internal/llm"
 	"github.com/bhavyavj/oi-assistant/internal/models"
 	"github.com/bhavyavj/oi-assistant/internal/storage"
-	"github.com/bhavyavj/oi-assistant/pkg/logger"
 )
 
 func main() {
-	log := logger.New()
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	cfgPath := os.Getenv("CONFIG_PATH")
 	if cfgPath == "" {
@@ -71,20 +71,25 @@ func main() {
 	}
 
 	// Start in background
+	serverErr := make(chan error, 1)
 	go func() {
 		log.Info("server starting", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("server error", "error", err)
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
-	// Graceful shutdown on SIGINT / SIGTERM
+	// Graceful shutdown on SIGINT / SIGTERM or server error
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	log.Info("shutting down...")
+	select {
+	case err := <-serverErr:
+		log.Error("server error", "error", err)
+	case <-quit:
+		log.Info("shutting down...")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 

@@ -33,55 +33,52 @@ func NewRedisStore(addr, password string, db int, ttl time.Duration) (*RedisStor
 	return &RedisStore{client: client, ttl: ttl}, nil
 }
 
-func (s *RedisStore) Close() error {
-	return s.client.Close()
-}
+func (s *RedisStore) Close() error { return s.client.Close() }
 
 func (s *RedisStore) SaveRecords(ctx context.Context, symbol string, records []models.OptionRecord) error {
 	data, err := json.Marshal(records)
 	if err != nil {
-		return fmt.Errorf("marshal records: %w", err)
+		return err
 	}
-	return s.client.Set(ctx, recordsKey(symbol), data, s.ttl).Err()
+	return s.client.Set(ctx, "oi:records:"+symbol, data, s.ttl).Err()
 }
 
 func (s *RedisStore) GetRecords(ctx context.Context, symbol string) ([]models.OptionRecord, error) {
-	data, err := s.client.Get(ctx, recordsKey(symbol)).Bytes()
+	data, err := s.client.Get(ctx, "oi:records:"+symbol).Bytes()
 	if err == redis.Nil {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("redis get: %w", err)
+		return nil, err
 	}
 	var records []models.OptionRecord
-	if err := json.Unmarshal(data, &records); err != nil {
-		return nil, fmt.Errorf("unmarshal records: %w", err)
-	}
-	return records, nil
+	return records, json.Unmarshal(data, &records)
 }
 
-func (s *RedisStore) SaveSignals(ctx context.Context, symbol string, signals []models.TradeSignal) error {
-	data, err := json.Marshal(signals)
+func (s *RedisStore) SaveAnalysis(ctx context.Context, symbol string, resp *models.AnalyseResponse) error {
+	data, err := json.Marshal(resp)
 	if err != nil {
-		return fmt.Errorf("marshal signals: %w", err)
+		return err
 	}
-	return s.client.Set(ctx, signalsKey(symbol), data, s.ttl).Err()
+	return s.client.Set(ctx, "oi:analysis:"+symbol, data, s.ttl).Err()
 }
 
-func (s *RedisStore) GetSignals(ctx context.Context, symbol string) ([]models.TradeSignal, error) {
-	data, err := s.client.Get(ctx, signalsKey(symbol)).Bytes()
+func (s *RedisStore) GetAnalysis(ctx context.Context, symbol string) (*models.AnalyseResponse, error) {
+	data, err := s.client.Get(ctx, "oi:analysis:"+symbol).Bytes()
 	if err == redis.Nil {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("redis get signals: %w", err)
+		return nil, err
 	}
-	var signals []models.TradeSignal
-	if err := json.Unmarshal(data, &signals); err != nil {
-		return nil, fmt.Errorf("unmarshal signals: %w", err)
+	var resp models.AnalyseResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
 	}
-	return signals, nil
+	resp.Cached = true
+	return &resp, nil
 }
 
-func recordsKey(symbol string) string { return "oi:records:" + symbol }
-func signalsKey(symbol string) string { return "oi:signals:" + symbol }
+func (s *RedisStore) DeleteSignals(ctx context.Context, symbol string) error {
+	return s.client.Del(ctx, "oi:analysis:"+symbol).Err()
+}

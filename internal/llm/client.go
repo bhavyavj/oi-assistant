@@ -33,7 +33,7 @@ func NewOpenAI(apiKey, model string, timeout time.Duration) Client {
 }
 
 func (c *openAIClient) Complete(ctx context.Context, prompt string) (string, error) {
-	body, _ := json.Marshal(map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"model": c.model,
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
@@ -41,6 +41,9 @@ func (c *openAIClient) Complete(ctx context.Context, prompt string) (string, err
 		"temperature": 0.3,
 		"max_tokens":  512,
 	})
+	if err != nil {
+		return "", fmt.Errorf("marshal openai request: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		"https://api.openai.com/v1/chat/completions", bytes.NewReader(body))
@@ -93,11 +96,14 @@ func NewOllama(baseURL, model string, timeout time.Duration) Client {
 }
 
 func (c *ollamaClient) Complete(ctx context.Context, prompt string) (string, error) {
-	body, _ := json.Marshal(map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"model":  c.model,
 		"prompt": prompt,
 		"stream": false,
 	})
+	if err != nil {
+		return "", fmt.Errorf("marshal ollama request: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/api/generate", bytes.NewReader(body))

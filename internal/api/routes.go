@@ -17,10 +17,19 @@ func NewRouter(h *handlers.Handler) http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(90 * time.Second))
+	r.Use(middleware.Throttle(20))
 
 	r.Get("/healthz", h.Health)
 	r.Post("/upload-excel", h.UploadExcel)
 	r.Get("/analyse", h.Analyse)
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/static/index.html")
+	})
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/static/index.html")
+	})
 
 	return r
 }

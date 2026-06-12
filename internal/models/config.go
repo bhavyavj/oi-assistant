@@ -23,7 +23,7 @@ type Config struct {
 
 	LLM struct {
 		Provider       string        `yaml:"provider"`
-		OpenAIAPIKey   string        `yaml:"openai_api_key"`
+		OpenAIAPIKey   string        `yaml:"-"` // env-only: OPENAI_API_KEY
 		OpenAIModel    string        `yaml:"openai_model"`
 		OllamaURL      string        `yaml:"ollama_url"`
 		OllamaModel    string        `yaml:"ollama_model"`

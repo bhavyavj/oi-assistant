@@ -1,5 +1,10 @@
 bin/
 *.exe
 .env
+
+# Exclude all xlsx/csv by default (real broker data should not be committed)
 *.xlsx
+*.csv
+
+# Keep the synthetic sample files used for tests/demos
 !scripts/sample_data/sample_options.xlsx

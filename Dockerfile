@@ -10,5 +10,6 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /oi-assistant .
 COPY configs/ configs/
+COPY web/static/ web/static/
 EXPOSE 8080
 ENTRYPOINT ["/app/oi-assistant"]
