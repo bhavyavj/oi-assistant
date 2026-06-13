@@ -22,6 +22,8 @@ func NewRouter(h *handlers.Handler) http.Handler {
 	r.Get("/healthz", h.Health)
 	r.Post("/upload-excel", h.UploadExcel)
 	r.Get("/analyse", h.Analyse)
+	r.Get("/fetch-nse", h.FetchNSE)
+	r.Get("/ai-report", h.AIReport)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "web/static/index.html")

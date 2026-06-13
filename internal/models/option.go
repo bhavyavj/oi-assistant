@@ -42,9 +42,12 @@ type TradeSignal struct {
 
 // AnalyseResponse is the full response from /analyse.
 type AnalyseResponse struct {
-	Symbol   string      `json:"symbol"`
-	Cached   bool        `json:"cached"`
-	Metrics  OIMetrics   `json:"metrics"`           // overall (all expiries combined)
-	Expiries []OIMetrics `json:"expiries"`          // per-expiry breakdown
-	Signals  []TradeSignal `json:"signals"`
+	Symbol    string         `json:"symbol"`
+	Cached    bool           `json:"cached"`
+	SpotPrice float64        `json:"spot_price,omitempty"`
+	AIReport  string         `json:"ai_report,omitempty"`
+	Metrics   OIMetrics      `json:"metrics"`           // overall (all expiries combined)
+	Expiries  []OIMetrics    `json:"expiries"`          // per-expiry breakdown
+	Signals   []TradeSignal  `json:"signals"`
+	Records   []OptionRecord `json:"records,omitempty"`
 }

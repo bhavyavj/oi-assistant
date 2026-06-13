@@ -55,10 +55,16 @@ func (a *Analyzer) Analyze(ctx context.Context, records []models.OptionRecord) [
 				signals[idx] = fallbackSignal(r)
 				return
 			}
-			sig, err := a.generateSignal(ctx, r)
-			if err != nil {
-				a.log.Warn("LLM failed, using fallback", "symbol", r.Symbol, "error", err)
+			var sig models.TradeSignal
+			if a.llm == nil {
 				sig = fallbackSignal(r)
+			} else {
+				var err error
+				sig, err = a.generateSignal(ctx, r)
+				if err != nil {
+					a.log.Warn("LLM failed, using fallback", "symbol", r.Symbol, "error", err)
+					sig = fallbackSignal(r)
+				}
 			}
 			signals[idx] = sig
 		}(i, rec)
@@ -309,4 +315,9 @@ func fallbackSignal(r models.OptionRecord) models.TradeSignal {
 		Symbol: r.Symbol, StrikePrice: r.StrikePrice, OptionType: r.OptionType, Expiry: r.Expiry,
 		Action: action, Rationale: rationale, Confidence: confidence, Source: "fallback",
 	}
+}
+
+// CompletePrompt delegates completions directly to the analyzer's LLM client.
+func (a *Analyzer) CompletePrompt(ctx context.Context, prompt string) (string, error) {
+	return a.llm.Complete(ctx, prompt)
 }

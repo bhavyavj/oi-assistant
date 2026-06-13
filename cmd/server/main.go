@@ -32,14 +32,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Redis
-	store, err := storage.NewRedisStore(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.TTL)
+	// Storage (Redis with In-Memory fallback)
+	var store storage.Store
+	store, err = storage.NewRedisStore(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.TTL)
 	if err != nil {
-		log.Error("failed to connect to redis", "error", err)
-		os.Exit(1)
+		log.Warn("failed to connect to redis, falling back to in-memory storage", "error", err)
+		store = storage.NewInMemoryStore(cfg.Redis.TTL)
+	} else {
+		log.Info("redis connected", "addr", cfg.Redis.Addr)
 	}
 	defer store.Close()
-	log.Info("redis connected", "addr", cfg.Redis.Addr)
 
 	// LLM client
 	llmClient, err := llm.NewFromConfig(

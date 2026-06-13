@@ -9,22 +9,24 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/bhavyavj/oi-assistant/internal/core"
 	"github.com/bhavyavj/oi-assistant/internal/excel"
 	"github.com/bhavyavj/oi-assistant/internal/models"
+	"github.com/bhavyavj/oi-assistant/internal/nse"
 	"github.com/bhavyavj/oi-assistant/internal/storage"
 )
 
 type Handler struct {
-	store    *storage.RedisStore
+	store    storage.Store
 	analyzer *core.Analyzer
 	log      *slog.Logger
 }
 
-func New(store *storage.RedisStore, analyzer *core.Analyzer, log *slog.Logger) *Handler {
+func New(store storage.Store, analyzer *core.Analyzer, log *slog.Logger) *Handler {
 	return &Handler{store: store, analyzer: analyzer, log: log}
 }
 
@@ -49,14 +51,12 @@ func (h *Handler) UploadExcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For wide-format CSVs (common from NSE downloads), prefer symbol inferred from the filename
-	// over the form value (which may be left as the default "NIFTY").
-	// This makes the system "capable enough to fetch it from the file" as requested.
+	// Always infer symbol from filename for .csv (NSE downloads are wide-format and the symbol
+	// is in the filename, not the data). This takes precedence over the form input so the
+	// user doesn't have to manually correct the symbol field.
 	if ext == ".csv" {
 		if inferred := inferSymbolFromFilename(header.Filename); inferred != "" {
-			if symbol == "" || symbol == "NIFTY" {
-				symbol = inferred
-			}
+			symbol = inferred
 		}
 	}
 
@@ -80,7 +80,8 @@ func (h *Handler) UploadExcel(w http.ResponseWriter, r *http.Request) {
 
 	var records []models.OptionRecord
 	if ext == ".csv" {
-		records, err = parseCSV(tmp.Name(), symbol)
+		defaultExpiry := inferExpiryFromFilename(header.Filename)
+		records, err = parseCSV(tmp.Name(), symbol, defaultExpiry)
 	} else {
 		records, err = excel.Parse(tmp.Name())
 	}
@@ -134,6 +135,9 @@ func (h *Handler) Analyse(w http.ResponseWriter, r *http.Request) {
 
 	cached, err := h.store.GetAnalysis(r.Context(), symbol)
 	if err == nil && cached != nil {
+		if cached.SpotPrice == 0 {
+			cached.SpotPrice, _ = h.store.GetSpotPrice(r.Context(), symbol)
+		}
 		jsonOK(w, cached)
 		return
 	}
@@ -148,14 +152,18 @@ func (h *Handler) Analyse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	spotPrice, _ := h.store.GetSpotPrice(r.Context(), symbol)
+
 	signals := h.analyzer.Analyze(r.Context(), records)
 	overall, expiries := core.CalcMetrics(records)
 	resp := &models.AnalyseResponse{
-		Symbol:   symbol,
-		Cached:   false,
-		Metrics:  overall,
-		Expiries: expiries,
-		Signals:  signals,
+		Symbol:    symbol,
+		Cached:    false,
+		SpotPrice: spotPrice,
+		Metrics:   overall,
+		Expiries:  expiries,
+		Signals:   signals,
+		Records:   records,
 	}
 
 	if err := h.store.SaveAnalysis(r.Context(), symbol, resp); err != nil {
@@ -192,7 +200,7 @@ func keys[K comparable, V any](m map[K]V) []K {
 // parseCSV supports two formats:
 //  1. Wide NSE format: CALLS cols | STRIKE | PUTS cols
 //  2. Tall normalized format: Symbol/Strike/OptionType/... columns
-func parseCSV(path string, symbolOverride string) ([]models.OptionRecord, error) {
+func parseCSV(path string, symbolOverride string, defaultExpiry string) ([]models.OptionRecord, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -265,14 +273,17 @@ func parseCSV(path string, symbolOverride string) ([]models.OptionRecord, error)
 	}
 
 	if isWide {
-		return parseWideCSV(header, dataRows, strikeCol, symbolOverride)
+		return parseWideCSV(header, dataRows, strikeCol, symbolOverride, defaultExpiry)
 	}
-	return parseTallCSV(header, dataRows, strikeCol, symbolOverride)
+	return parseTallCSV(header, dataRows, strikeCol, symbolOverride, defaultExpiry)
 }
 
-func parseWideCSV(header []string, dataRows [][]string, strikeCol int, sym string) ([]models.OptionRecord, error) {
+func parseWideCSV(header []string, dataRows [][]string, strikeCol int, sym string, defaultExpiry string) ([]models.OptionRecord, error) {
 	if sym == "" {
 		sym = "UNKNOWN"
+	}
+	if defaultExpiry == "" {
+		defaultExpiry = "Current Expiry"
 	}
 
 	// NSE wide layout (left of STRIKE = CE, right of STRIKE = PE):
@@ -333,6 +344,7 @@ func parseWideCSV(header []string, dataRows [][]string, strikeCol int, sym strin
 			prev := maxInt(0, oi-chng)
 			rec := models.OptionRecord{
 				Symbol: sym, StrikePrice: strike, OptionType: "CE",
+				Expiry: defaultExpiry,
 				OI: int64(oi), PrevOI: int64(prev),
 				Volume: int64(cleanInt(getCol(row, ceVol))),
 				LTP:    cleanNum(getCol(row, ceLtp)),
@@ -349,6 +361,7 @@ func parseWideCSV(header []string, dataRows [][]string, strikeCol int, sym strin
 			prev := maxInt(0, oi-chng)
 			rec := models.OptionRecord{
 				Symbol: sym, StrikePrice: strike, OptionType: "PE",
+				Expiry: defaultExpiry,
 				OI: int64(oi), PrevOI: int64(prev),
 				Volume: int64(cleanInt(getCol(row, peVol))),
 				LTP:    cleanNum(getCol(row, peLtp)),
@@ -363,8 +376,8 @@ func parseWideCSV(header []string, dataRows [][]string, strikeCol int, sym strin
 	return recs, nil
 }
 
-func parseTallCSV(header []string, dataRows [][]string, strikeCol int, symbolOverride string) ([]models.OptionRecord, error) {
-	sym, optType, oi, prevOI, vol, ltp, iv := -1, -1, -1, -1, -1, -1, -1
+func parseTallCSV(header []string, dataRows [][]string, strikeCol int, symbolOverride string, defaultExpiry string) ([]models.OptionRecord, error) {
+	sym, optType, expiry, oi, prevOI, vol, ltp, iv := -1, -1, -1, -1, -1, -1, -1, -1
 	for i, h := range header {
 		n := strings.ToLower(strings.TrimSpace(h))
 		switch n {
@@ -372,6 +385,8 @@ func parseTallCSV(header []string, dataRows [][]string, strikeCol int, symbolOve
 			sym = i
 		case "option type", "type", "ce/pe", "optiontype":
 			optType = i
+		case "expiry", "expiry date", "expiry_date", "expirydate":
+			expiry = i
 		case "oi", "open interest", "openinterest":
 			oi = i
 		case "prev oi", "previous oi", "prevoi":
@@ -383,6 +398,10 @@ func parseTallCSV(header []string, dataRows [][]string, strikeCol int, symbolOve
 		case "iv", "implied volatility", "impliedvolatility":
 			iv = i
 		}
+	}
+
+	if defaultExpiry == "" {
+		defaultExpiry = "Current Expiry"
 	}
 
 	var recs []models.OptionRecord
@@ -406,11 +425,17 @@ func parseTallCSV(header []string, dataRows [][]string, strikeCol int, symbolOve
 			continue
 		}
 
+		expiryVal := getCol(row, expiry)
+		if expiryVal == "" {
+			expiryVal = defaultExpiry
+		}
+
 		oiVal := cleanInt(getCol(row, oi))
 		prev := maxInt(0, cleanInt(getCol(row, prevOI)))
 		rec := models.OptionRecord{
 			Symbol: s, StrikePrice: strike, OptionType: ot,
-			OI: int64(oiVal), PrevOI: int64(prev),
+			Expiry: expiryVal,
+			OI:     int64(oiVal), PrevOI: int64(prev),
 			Volume: int64(cleanInt(getCol(row, vol))),
 			LTP:    cleanNum(getCol(row, ltp)),
 			IV:     cleanNum(getCol(row, iv)),
@@ -468,5 +493,155 @@ func inferSymbolFromFilename(filename string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// inferExpiryFromFilename extracts expiry date from common NSE download filenames.
+// e.g. "option-chain-ED-RELIANCE-30-Jun-2026.csv" -> "30-Jun-2026"
+func inferExpiryFromFilename(filename string) string {
+	if filename == "" {
+		return ""
+	}
+	base := strings.ToUpper(filepath.Base(filename))
+	re := regexp.MustCompile(`OPTION-CHAIN-ED-[A-Z0-9]+-([0-9]{2}-[A-Z]{3}-[0-9]{4})`)
+	if m := re.FindStringSubmatch(base); len(m) > 1 {
+		parts := strings.Split(m[1], "-")
+		if len(parts) == 3 {
+			month := strings.Title(strings.ToLower(parts[1]))
+			return fmt.Sprintf("%s-%s-%s", parts[0], month, parts[2])
+		}
+		return m[1]
+	}
+	return ""
+}
+
+// FetchNSE triggers a live fetch from NSE India, stores records and spot price, clears cached analysis.
+func (h *Handler) FetchNSE(w http.ResponseWriter, r *http.Request) {
+	symbol := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("symbol")))
+	if symbol == "" {
+		jsonError(w, "query param 'symbol' required", http.StatusBadRequest)
+		return
+	}
+
+	h.log.Info("fetching live NSE data", "symbol", symbol)
+	records, spotPrice, err := nse.FetchLive(r.Context(), symbol)
+	if err != nil {
+		h.log.Error("NSE live fetch failed", "symbol", symbol, "error", err)
+		jsonError(w, "NSE fetch failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.store.SaveRecords(r.Context(), symbol, records); err != nil {
+		h.log.Error("failed to save records to store", "symbol", symbol, "error", err)
+		jsonError(w, "save error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.store.SaveSpotPrice(r.Context(), symbol, spotPrice); err != nil {
+		h.log.Warn("failed to save spot price to store", "symbol", symbol, "error", err)
+	}
+
+	_ = h.store.DeleteSignals(r.Context(), symbol)
+
+	h.log.Info("NSE live fetch success", "symbol", symbol, "records", len(records), "spot", spotPrice)
+	jsonOK(w, map[string]any{
+		"symbol":     symbol,
+		"records":    len(records),
+		"spot_price": spotPrice,
+		"message":    "Live options chain fetched successfully",
+	})
+}
+
+// AIReport generates a single, consolidated AI commentary for a symbol based on its analyzed data.
+func (h *Handler) AIReport(w http.ResponseWriter, r *http.Request) {
+	symbol := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("symbol")))
+	if symbol == "" {
+		jsonError(w, "query param 'symbol' required", http.StatusBadRequest)
+		return
+	}
+
+	// Fetch cached analysis first
+	analysis, err := h.store.GetAnalysis(r.Context(), symbol)
+	if err != nil || analysis == nil {
+		// Try to run analysis
+		records, err := h.store.GetRecords(r.Context(), symbol)
+		if err != nil || len(records) == 0 {
+			jsonError(w, "no option data found for symbol "+symbol+". Upload or fetch data first.", http.StatusNotFound)
+			return
+		}
+		spotPrice, _ := h.store.GetSpotPrice(r.Context(), symbol)
+		signals := h.analyzer.Analyze(r.Context(), records)
+		overall, expiries := core.CalcMetrics(records)
+		analysis = &models.AnalyseResponse{
+			Symbol:    symbol,
+			Cached:    false,
+			SpotPrice: spotPrice,
+			Metrics:   overall,
+			Expiries:  expiries,
+			Signals:   signals,
+		}
+	}
+
+	// If AI report already exists in cached analysis, return it!
+	if analysis.AIReport != "" {
+		jsonOK(w, map[string]string{"ai_report": analysis.AIReport})
+		return
+	}
+
+	// Format top signals
+	var sigSummary []string
+	var sortedSignals []models.TradeSignal
+	sortedSignals = append(sortedSignals, analysis.Signals...)
+	sort.Slice(sortedSignals, func(i, j int) bool {
+		actI := sortedSignals[i].Action
+		actJ := sortedSignals[j].Action
+		if (actI == "BUY" || actI == "SELL") && (actJ != "BUY" && actJ != "SELL") {
+			return true
+		}
+		return false
+	})
+
+	limit := 5
+	if len(sortedSignals) < limit {
+		limit = len(sortedSignals)
+	}
+	for i := 0; i < limit; i++ {
+		sig := sortedSignals[i]
+		sigSummary = append(sigSummary, fmt.Sprintf("%s %0.f %s: %s (Confidence: %s)", sig.OptionType, sig.StrikePrice, sig.Action, sig.Rationale, sig.Confidence))
+	}
+
+	// Construct AI report prompt
+	prompt := fmt.Sprintf(`You are an expert options trading strategist. Analyze this market snapshot and write a professional, action-oriented 1-2 paragraph market commentary. Include specific key support/resistance levels, a tactical trade strategy (e.g. credit/debit spread, naked selling warning, or watch/neutral), and risk warnings. Do not mention HTML tags.
+
+Symbol: %s
+Spot Price: %.2f
+Overall PCR: %.2f (Put-Call Ratio)
+Max Pain Strike: %.0f
+IV Skew: %.2f (CE IV - PE IV)
+Trade Bias: %s (Reason: %s)
+Top CE Strikes (Resistance): %v
+Top PE Strikes (Support): %v
+
+Key Option Chain Signals:
+- %s
+
+Provide a structured, readable markdown report with headers.`,
+		analysis.Symbol, analysis.SpotPrice, analysis.Metrics.PCR, analysis.Metrics.MaxPain,
+		analysis.Metrics.IVSkew, analysis.Metrics.Bias, analysis.Metrics.BiasReason,
+		analysis.Metrics.TopCEStrikes, analysis.Metrics.TopPEStrikes,
+		strings.Join(sigSummary, "\n- "))
+
+	// Call the analyzer's CompletePrompt to generate the report
+	ctx := r.Context()
+	report, err := h.analyzer.CompletePrompt(ctx, prompt)
+	if err != nil {
+		jsonError(w, "failed generating AI report: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	analysis.AIReport = report
+	// Save back to cache
+	_ = h.store.SaveAnalysis(ctx, symbol, analysis)
+
+	jsonOK(w, map[string]string{"ai_report": report})
 }
 

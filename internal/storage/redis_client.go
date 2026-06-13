@@ -55,6 +55,18 @@ func (s *RedisStore) GetRecords(ctx context.Context, symbol string) ([]models.Op
 	return records, json.Unmarshal(data, &records)
 }
 
+func (s *RedisStore) SaveSpotPrice(ctx context.Context, symbol string, price float64) error {
+	return s.client.Set(ctx, "oi:spot:"+symbol, price, s.ttl).Err()
+}
+
+func (s *RedisStore) GetSpotPrice(ctx context.Context, symbol string) (float64, error) {
+	val, err := s.client.Get(ctx, "oi:spot:"+symbol).Float64()
+	if err == redis.Nil {
+		return 0, nil
+	}
+	return val, err
+}
+
 func (s *RedisStore) SaveAnalysis(ctx context.Context, symbol string, resp *models.AnalyseResponse) error {
 	data, err := json.Marshal(resp)
 	if err != nil {

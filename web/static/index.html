@@ -1,162 +1,328 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI Assistant • Local • Insightful</title>
+    <title>OI Assistant • Professional Option Chain & OI Analyst</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/static/app.css">
 </head>
-<body class="bg-slate-950 text-slate-200">
-    <!-- Top Navigation -->
-    <nav class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-lg sticky top-0 z-50">
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500/30 font-sans">
+    <!-- Top Premium Navigation -->
+    <nav class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-x-4">
                     <div class="flex items-center gap-x-3">
-                        <div class="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fa-solid fa-chart-line text-white text-2xl"></i>
+                        <div class="w-10 h-10 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <i class="fa-solid fa-chart-line text-white text-xl"></i>
                         </div>
-                        <span class="title-font text-3xl font-semibold tracking-tighter">OI Assistant</span>
-                    </div>
-                    <div class="hidden md:flex items-center px-3 py-1 rounded-full bg-emerald-900/30 text-emerald-400 text-xs font-mono tracking-widest">
-                        LOCAL • PRIVATE • INSTANT
+                        <div>
+                            <span class="title-font text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">OI Assistant</span>
+                            <span class="text-[10px] block text-emerald-400 font-mono tracking-widest leading-none">v2.0 • PROFESSIONAL</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-center gap-x-3">
-                    <div class="flex items-center gap-x-2 px-3 py-1.5 bg-slate-900 rounded-3xl border border-slate-800 text-sm">
-                        <div id="health-dot" class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
-                        <span id="health-text" class="text-emerald-400 text-xs font-medium">Connected</span>
+                <div class="flex items-center gap-x-4">
+                    <div class="flex items-center gap-x-2 px-3 py-1.5 bg-slate-900 rounded-full border border-slate-800 text-xs">
+                        <div id="health-dot" class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span id="health-text" class="text-emerald-400 font-medium">Connected</span>
                     </div>
-                    <button onclick="toggleTheme()" class="px-3 py-1.5 flex items-center gap-x-2 text-sm bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-3xl transition-all">
+                    <button onclick="toggleTheme()" class="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-full transition-all duration-200">
                         <i class="fa-solid fa-moon" id="theme-icon"></i>
                     </button>
-                    <a href="#" class="text-slate-400 hover:text-white transition-colors p-2">
-                        <i class="fa-brands fa-github text-lg"></i>
+                    <a href="https://github.com/bhavyavj/oi-assistant" target="_blank" rel="noopener" class="text-slate-400 hover:text-white transition-colors duration-200">
+                        <i class="fa-brands fa-github text-xl"></i>
                     </a>
                 </div>
             </div>
         </div>
     </nav>
 
-
-
+    <!-- Main Workspace -->
     <div class="max-w-7xl mx-auto px-6 py-8">
-
-        <!-- Hero -->
-        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10">
+        
+        <!-- Header Spot Information -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
             <div>
-                <h1 class="text-6xl md:text-7xl font-semibold tracking-tighter title-font leading-none text-white">
-                    Turn raw option<br>chain data into<br>clear decisions.
+                <h1 class="text-4xl md:text-5xl font-bold tracking-tight title-font text-white leading-tight">
+                    Professional Option Chain Analytics
                 </h1>
-                <p class="mt-4 max-w-md text-xl text-slate-400">Upload your broker CSV. Get PCR, max pain, IV skew, and expiry-level OI breakdowns instantly.</p>
-                <div class="mt-6 flex items-center gap-x-4">
-                    <button onclick="document.getElementById('upload-section').scrollIntoView({behavior:'smooth'})"
-                            class="inline-flex items-center gap-x-3 bg-white hover:bg-slate-100 text-slate-900 font-semibold px-8 py-4 rounded-3xl shadow-lg text-lg">
-                        <span>Get started</span><i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                    <button onclick="quickDemo()" class="inline-flex items-center gap-x-2 px-6 py-4 text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
-                        <i class="fa-solid fa-play"></i><span>See demo</span>
-                    </button>
-                </div>
+                <p class="text-slate-400 mt-2 text-base max-w-2xl">
+                    Extract actionable insights, detect support/resistance, and generate AI-driven trade commentary directly from live or broker-downloaded option chain data.
+                </p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-
-            <!-- Left: Upload + Fetch -->
-            <div class="xl:col-span-5">
-                <div id="upload-section" class="premium-card bg-slate-900 border border-slate-800 rounded-3xl p-6">
-                    <div class="flex items-center justify-between mb-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left Panel: Control / Input (span 4) -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                
+                <!-- Data Source Card -->
+                <div class="premium-card bg-slate-900/40 border border-slate-800 rounded-3xl p-6 backdrop-blur-md">
+                    <div class="flex items-center justify-between mb-6">
                         <div>
-                            <span class="section-header">DATA INPUT</span>
-                            <h3 class="text-2xl font-semibold tracking-tight">Upload or Fetch</h3>
+                            <span class="section-header text-emerald-400 text-xs tracking-wider font-semibold">DATA SOURCE</span>
+                            <h3 class="text-xl font-bold text-white mt-1">Symbol & Input</h3>
                         </div>
-                        <i class="fa-solid fa-upload text-3xl text-emerald-500/60"></i>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Symbol</label>
-                        <input id="symbol-input" type="text" value="NIFTY"
-                               class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 text-white px-4 py-[13px] rounded-2xl text-lg font-medium outline-none transition-all">
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <div onclick="setQuickSymbol('NIFTY')"     class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">NIFTY</div>
-                            <div onclick="setQuickSymbol('BANKNIFTY')" class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">BANKNIFTY</div>
-                            <div onclick="setQuickSymbol('RELIANCE')"  class="cursor-pointer px-3 py-1 bg-slate-800 hover:bg-emerald-900 transition-colors rounded-2xl text-emerald-400 text-xs font-medium">RELIANCE</div>
+                        <div class="w-10 h-10 bg-slate-800/60 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-sliders text-emerald-400 text-lg"></i>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Option Chain File</label>
-                        <div id="drop-zone" class="group border-2 border-dashed border-slate-700 hover:border-emerald-500 transition-all bg-slate-950 rounded-3xl p-8 text-center cursor-pointer">
+                    <!-- Symbol Input with live fetch -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Ticker / Symbol</label>
+                        <div class="flex gap-2">
+                            <input id="symbol-input" type="text" value="NIFTY" placeholder="e.g. NIFTY, RELIANCE"
+                                   class="flex-1 bg-slate-950/80 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white px-4 py-3 rounded-2xl text-base font-bold outline-none transition-all placeholder:text-slate-600 uppercase">
+                            <button onclick="fetchNSE()" id="btn-fetch-live"
+                                    class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold px-5 rounded-2xl transition-all duration-200 shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-cloud-arrow-down"></i><span>Fetch Live</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div onclick="setQuickSymbol('NIFTY')"     class="cursor-pointer px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-emerald-400 text-[11px] font-mono font-semibold transition-colors">NIFTY</div>
+                            <div onclick="setQuickSymbol('BANKNIFTY')" class="cursor-pointer px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-emerald-400 text-[11px] font-mono font-semibold transition-colors">BANKNIFTY</div>
+                            <div onclick="setQuickSymbol('RELIANCE')"  class="cursor-pointer px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-emerald-400 text-[11px] font-mono font-semibold transition-colors">RELIANCE</div>
+                        </div>
+                    </div>
+
+                    <div class="relative flex py-2 items-center">
+                        <div class="flex-grow border-t border-slate-800"></div>
+                        <span class="flex-shrink mx-4 text-slate-500 text-xs font-bold font-mono">OR UPLOAD</span>
+                        <div class="flex-grow border-t border-slate-800"></div>
+                    </div>
+
+                    <!-- File drop area -->
+                    <div class="mt-4">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Excel or CSV File</label>
+                        <div id="drop-zone" class="group border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950/40 hover:bg-slate-950/80 transition-all rounded-2xl p-6 text-center cursor-pointer">
                             <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls">
                             <div class="flex flex-col items-center">
-                                <div class="w-12 h-12 bg-slate-800 group-hover:bg-emerald-900 transition-colors rounded-2xl flex items-center justify-center mb-4">
-                                    <i class="fa-solid fa-file-upload text-2xl text-emerald-400"></i>
+                                <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                                    <i class="fa-solid fa-file-excel text-xl text-emerald-400"></i>
                                 </div>
-                                <div class="font-semibold text-white">Drop your CSV here</div>
-                                <div class="text-sm text-slate-400 mt-1">or click to browse</div>
-                                <div class="mt-3 text-[10px] px-3 py-1 bg-slate-900 rounded-full text-slate-400">Direct broker CSVs supported</div>
+                                <div class="text-sm font-bold text-white">Drag & drop option chain</div>
+                                <div class="text-xs text-slate-500 mt-1">Excel (.xlsx) or NSE Wide CSV</div>
                             </div>
                         </div>
-                        <div id="file-name" class="hidden mt-3 px-4 py-2.5 bg-emerald-950 text-emerald-400 text-sm font-medium rounded-2xl items-center gap-x-2">
-                            <i class="fa-solid fa-file"></i>
-                            <span id="selected-file-name" class="truncate"></span>
-                            <button onclick="clearFile(event)" class="ml-auto text-emerald-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                        <div id="file-name" class="hidden mt-3 px-4 py-2.5 bg-emerald-950/40 text-emerald-400 text-xs font-bold rounded-xl items-center gap-x-2 border border-emerald-900/50">
+                            <i class="fa-solid fa-file-lines text-sm"></i>
+                            <span id="selected-file-name" class="truncate flex-1"></span>
+                            <button onclick="clearFile(event)" class="text-emerald-300 hover:text-white transition-colors"><i class="fa-solid fa-circle-xmark text-sm"></i></button>
                         </div>
                     </div>
 
                     <div class="mt-5">
-                        <button onclick="uploadFile()"
-                                class="w-full flex items-center justify-center gap-x-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 rounded-3xl text-lg">
-                            <i class="fa-solid fa-cloud-upload"></i><span>Upload &amp; Process</span>
+                        <button onclick="uploadFile()" id="btn-upload"
+                                class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-2xl transition-all duration-200 border border-slate-700 text-sm">
+                            <i class="fa-solid fa-cloud-arrow-up"></i><span>Upload &amp; Analyze File</span>
                         </button>
-                        <div id="upload-status" class="mt-3 text-sm min-h-[22px]"></div>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-500">
-                        Download CSVs from <a href="https://www.nseindia.com/option-chain" target="_blank" class="text-emerald-700 hover:text-emerald-500 underline">nseindia.com/option-chain</a> and upload above.
+                        <div id="upload-status" class="mt-3 text-xs min-h-[16px] text-center font-medium"></div>
                     </div>
                 </div>
 
-                <!-- Hidden analyze input -->
-                <input type="hidden" id="analyze-symbol" value="NIFTY">
-
-                <div class="mt-5">
-                    <div class="text-xs font-semibold text-slate-400 px-1 mb-2">QUICK SYMBOLS</div>
-                    <div class="flex flex-wrap gap-2">
-                        <div onclick="setQuickSymbol('NIFTY')"     class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">NIFTY</div>
-                        <div onclick="setQuickSymbol('BANKNIFTY')" class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">BANKNIFTY</div>
-                        <div onclick="setQuickSymbol('FINNIFTY')"  class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">FINNIFTY</div>
-                        <div onclick="setQuickSymbol('RELIANCE')"  class="cursor-pointer px-4 py-1.5 text-sm bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-emerald-700 transition-all rounded-2xl">RELIANCE</div>
-                    </div>
-                    <div class="mt-4">
-                        <div class="text-xs font-semibold text-slate-400 px-1 mb-2">RECENT</div>
-                        <div id="recent-symbols" class="flex flex-wrap gap-2 text-sm"></div>
-                    </div>
+                <!-- Tickers navigation -->
+                <div class="flex flex-col gap-2">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Recent Searches</div>
+                    <div id="recent-symbols" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
 
-            <!-- Right: Results -->
-            <div class="xl:col-span-7">
-                <div id="results-area" class="premium-card bg-slate-900 border border-slate-800 rounded-3xl min-h-[580px] overflow-hidden">
-                    <div id="results-placeholder" class="h-full flex flex-col items-center justify-center p-8 text-center">
-                        <div class="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center mb-5">
-                            <i class="fa-solid fa-magnifying-glass-chart text-4xl text-emerald-500/70"></i>
+            <!-- Right Panel: Results / Dashboard (span 8) -->
+            <div class="lg:col-span-8">
+                <div id="results-area" class="bg-slate-900/20 border border-slate-800 rounded-3xl min-h-[580px] overflow-hidden flex flex-col backdrop-blur-md">
+                    <!-- Placeholder state -->
+                    <div id="results-placeholder" class="flex-1 flex flex-col items-center justify-center p-12 text-center my-auto">
+                        <div class="w-20 h-20 bg-slate-900/60 rounded-3xl flex items-center justify-center mb-6 border border-slate-800 shadow-xl shadow-slate-950/20">
+                            <i class="fa-solid fa-chart-pie text-4xl text-emerald-500/50"></i>
                         </div>
-                        <div class="font-semibold text-2xl tracking-tight">Ready for insights</div>
-                        <p class="max-w-xs mt-3 text-slate-400">Upload an option chain file or fetch live data to see analysis here.</p>
+                        <h3 class="text-2xl font-bold text-white tracking-tight">No Market Data Analyzed</h3>
+                        <p class="max-w-md text-slate-400 mt-2 text-sm leading-relaxed">
+                            To view analytics, type an index or stock and fetch live data, or drag and drop a pre-downloaded broker option chain sheet.
+                        </p>
+                        <div class="mt-6 flex gap-3">
+                            <button onclick="quickDemo()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all duration-200">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-2 text-emerald-400"></i>Load Demo Data
+                            </button>
+                        </div>
                     </div>
-                    <div id="results-content" class="hidden"></div>
+
+                    <!-- Loader state -->
+                    <div id="results-loader" class="hidden flex-1 flex flex-col items-center justify-center p-12 my-auto">
+                        <div class="relative w-16 h-16 mb-4">
+                            <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
+                            <div class="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+                        </div>
+                        <div class="text-lg font-bold text-white tracking-tight" id="loader-text">Fetching Live Option Chain...</div>
+                        <p class="text-xs text-slate-500 mt-2">Connecting to NSE and parsing data contracts...</p>
+                    </div>
+
+                    <!-- Content state -->
+                    <div id="results-content" class="hidden flex-1 flex flex-col">
+                        <!-- Navigation Tabs -->
+                        <div class="border-b border-slate-800 bg-slate-900/40 px-6 py-2.5 flex items-center justify-between gap-4">
+                            <div class="flex gap-2" id="tabs-header">
+                                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200">
+                                    <i class="fa-solid fa-table-columns mr-1.5"></i>Dashboard
+                                </button>
+                                <button onclick="switchTab('matrix')" id="tab-matrix" class="px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200">
+                                    <i class="fa-solid fa-list mr-1.5"></i>Option Chain Matrix
+                                </button>
+                                <button onclick="switchTab('charts')" id="tab-charts" class="px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200">
+                                    <i class="fa-solid fa-chart-column mr-1.5"></i>Analytics Charts
+                                </button>
+                            </div>
+                            <div id="spot-price-badge" class="px-3 py-1 bg-emerald-950/50 border border-emerald-900/50 rounded-full text-emerald-400 text-xs font-mono font-bold tracking-tight"></div>
+                        </div>
+
+                        <!-- Tab Panels Container -->
+                        <div class="p-6 flex-1 flex flex-col">
+                            
+                            <!-- PANEL 1: DASHBOARD -->
+                            <div id="panel-dashboard" class="flex flex-col gap-6">
+                                <!-- Info header -->
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <span class="text-xs font-semibold text-emerald-400 tracking-widest uppercase">MARKET SENTIMENT</span>
+                                        <h2 id="result-symbol-title" class="text-4xl font-extrabold text-white title-font mt-1">NIFTY</h2>
+                                    </div>
+                                    <span id="data-freshness" class="text-[10px] font-bold text-slate-500 font-mono tracking-widest bg-slate-800 px-2.5 py-1 rounded-md">FRESH DATA</span>
+                                </div>
+
+                                <!-- Key Stats Strip -->
+                                <div id="metrics-container"></div>
+
+                                <!-- Bias Card -->
+                                <div id="bias-card-container"></div>
+
+                                <!-- AI Market Report Card -->
+                                <div class="bg-gradient-to-tr from-slate-900/80 to-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -z-10"></div>
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-9 h-9 bg-emerald-950 border border-emerald-800 rounded-xl flex items-center justify-center">
+                                                <i class="fa-solid fa-wand-magic-sparkles text-emerald-400 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-bold text-white text-sm">AI Market Analyst Report</h4>
+                                                <p class="text-xs text-slate-400">Generate an executive options market commentary</p>
+                                            </div>
+                                        </div>
+                                        <button onclick="generateAIReport()" id="btn-ai-report" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/10 self-start sm:self-center">
+                                            <i class="fa-solid fa-arrows-spin" id="ai-spinner"></i><span>Generate AI Commentary</span>
+                                        </button>
+                                    </div>
+                                    <div id="ai-report-body" class="text-xs text-slate-400 leading-relaxed max-h-60 overflow-y-auto pr-2 bg-slate-950/40 border border-slate-800/40 p-4 rounded-xl font-sans">
+                                        <span class="text-slate-500 italic">No AI commentary loaded. Click "Generate AI Commentary" to fetch comprehensive market commentary.</span>
+                                    </div>
+                                </div>
+
+                                <!-- Signals Table -->
+                                <div>
+                                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Critical Changes & Options Activity</h4>
+                                    <div class="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden">
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-xs">
+                                                <thead>
+                                                    <tr class="bg-slate-900 border-b border-slate-800 text-slate-400 font-semibold text-left">
+                                                        <th class="px-4 py-3">Strike Price</th>
+                                                        <th class="px-4 py-3">Option</th>
+                                                        <th class="px-4 py-3">Expiry</th>
+                                                        <th class="px-4 py-3 text-center">Action</th>
+                                                        <th class="px-4 py-3 text-center">Confidence</th>
+                                                        <th class="px-4 py-3">Strategy / Rationale</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="signals-table-body" class="divide-y divide-slate-800/60"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PANEL 2: OPTION CHAIN MATRIX -->
+                            <div id="panel-matrix" class="hidden flex flex-col gap-4">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="text-xs font-semibold text-emerald-400 tracking-widest uppercase">Trading Layout</span>
+                                        <h3 class="text-2xl font-bold text-white">Call/Put Matrix</h3>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-xs text-slate-400">Filter Expiry:</label>
+                                        <select id="matrix-expiry-select" onchange="renderMatrixTable()" class="bg-slate-850 border border-slate-800 rounded-lg text-xs font-bold text-white px-3 py-1.5 outline-none focus:border-emerald-500"></select>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400">ATM Row is highlighted. Call buying/writing is shown on the left; Put buying/writing on the right.</p>
+
+                                <div class="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden">
+                                    <div class="overflow-x-auto max-h-[500px]">
+                                        <table class="w-full text-xs border-collapse">
+                                            <thead class="sticky top-0 bg-slate-900 shadow-md border-b border-slate-800 text-slate-400 font-semibold text-center z-10">
+                                                <tr>
+                                                    <th colspan="3" class="px-4 py-3 border-r border-slate-800 text-emerald-400 bg-emerald-950/10">CALLS</th>
+                                                    <th class="px-4 py-3 bg-slate-900">STRIKE</th>
+                                                    <th colspan="3" class="px-4 py-3 border-l border-slate-800 text-red-400 bg-red-950/10">PUTS</th>
+                                                </tr>
+                                                <tr class="bg-slate-900 border-b border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                                                    <th class="px-4 py-2">OI (Lot)</th>
+                                                    <th class="px-4 py-2">Chg OI%</th>
+                                                    <th class="px-4 py-2 border-r border-slate-800">LTP</th>
+                                                    <th class="px-4 py-2 bg-slate-900">STRIKE</th>
+                                                    <th class="px-4 py-2 border-l border-slate-800">LTP</th>
+                                                    <th class="px-4 py-2">Chg OI%</th>
+                                                    <th class="px-4 py-2">OI (Lot)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="matrix-table-body" class="divide-y divide-slate-800/40 text-center font-mono"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PANEL 3: CHARTS -->
+                            <div id="panel-charts" class="hidden flex flex-col gap-6">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <span class="text-xs font-semibold text-emerald-400 tracking-widest uppercase">Visual Intelligence</span>
+                                        <h3 class="text-2xl font-bold text-white">OI Distribution Charts</h3>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Expiry Bar Chart -->
+                                    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col">
+                                        <h4 class="text-sm font-bold text-white mb-4"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>Open Interest By Expiry</h4>
+                                        <div class="flex-1 min-h-[260px] flex items-center justify-center">
+                                            <canvas id="expiry-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Strike Distribution Chart -->
+                                    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col">
+                                        <h4 class="text-sm font-bold text-white mb-4"><i class="fa-solid fa-chart-column text-emerald-400 mr-2"></i>OI Strike Distribution (Top 10 Strikes)</h4>
+                                        <div class="flex-1 min-h-[260px] flex items-center justify-center">
+                                            <canvas id="strike-distribution-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="mt-10 flex flex-wrap items-center justify-between text-xs text-slate-500 px-2">
-            <div>Data cached for 24h in local Redis • Rule-based analysis + optional LLM</div>
-        </div>
+        <!-- Footer -->
+        <footer class="mt-16 border-t border-slate-800/60 pt-8 pb-12 text-center text-xs text-slate-500">
+            <p class="font-medium">OI Assistant • Professional Option Chain & OI Analyst v2.0</p>
+            <p class="mt-2 text-slate-600">Local-first sandbox • Redis caching enabled • Automated Fallback Options Engine</p>
+        </footer>
+
     </div>
 
     <script src="/static/app.js"></script>
