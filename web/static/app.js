@@ -1056,8 +1056,8 @@ function renderBasket() {
         
         const typeClass = leg.type === 'CE' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300';
         const legNetPremium = (isBuy ? -1 : 1) * leg.ltp * leg.qty;
-        const premiumText = (legNetPremium >= 0 ? '+' : '-') + '₹' + Math.abs(legNetPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
-        const premiumColor = legNetPremium >= 0 ? 'text-emerald-400' : 'text-slate-350';
+        const premiumText = '₹' + Math.abs(legNetPremium).toLocaleString(undefined, {minimumFractionDigits: 2}) + (legNetPremium >= 0 ? ' (Cr)' : ' (Dr)');
+        const premiumColor = legNetPremium >= 0 ? 'text-emerald-400' : 'text-rose-400/80';
         
         return `
             <tr class="hover:bg-slate-900/50 border-b border-slate-800/40">
@@ -1094,7 +1094,7 @@ function renderBasket() {
     
     const stats = calculateStrategyStats();
     
-    const premiumText = (stats.netPremium >= 0 ? '+' : '-') + '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
+    const premiumText = '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2}) + (stats.netPremium >= 0 ? ' (Net Credit)' : ' (Net Debit)');
     const headerPremiumEl = document.getElementById('drawer-header-net-premium');
     headerPremiumEl.textContent = premiumText;
     if (stats.netPremium >= 0) {
@@ -1290,11 +1290,11 @@ function analyzeStrategyPayoff(e) {
     document.getElementById('payoff-breakeven').textContent = breakevensText;
     document.getElementById('payoff-breakeven').title = breakevensText;
     
-    const premiumText = (stats.netPremium >= 0 ? '+' : '-') + '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
+    const premiumText = '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2}) + (stats.netPremium >= 0 ? ' (Net Credit)' : ' (Net Debit)');
     const premiumEl = document.getElementById('payoff-net-premium');
     premiumEl.textContent = premiumText;
     if (stats.netPremium >= 0) {
-        premiumEl.className = 'text-xs font-bold text-emerald-450 font-mono text-emerald-400';
+        premiumEl.className = 'text-xs font-bold text-emerald-400 font-mono';
     } else {
         premiumEl.className = 'text-xs font-bold text-white font-mono';
     }
