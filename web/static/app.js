@@ -276,6 +276,11 @@ function showStatus(msg, type) {
 function renderResults() {
     if (!currentAnalysisData) return;
     
+    // Clear strategy builder basket for new symbol
+    if (typeof clearBasket === 'function') {
+        clearBasket(null, false);
+    }
+    
     const d = currentAnalysisData;
     const placeholder = document.getElementById('results-placeholder');
     const content = document.getElementById('results-content');
@@ -505,15 +510,33 @@ function renderMatrixTable() {
         const ceChangeColor = ce.oi_change_pct > 0 ? 'text-emerald-400' : ce.oi_change_pct < 0 ? 'text-rose-400' : 'text-slate-500';
         const peChangeColor = pe.oi_change_pct > 0 ? 'text-emerald-400' : pe.oi_change_pct < 0 ? 'text-rose-400' : 'text-slate-500';
 
+        const ceLtpMarkup = ce.ltp ? `
+            <div class="flex items-center justify-between h-full w-full">
+                <span>${ce.ltp.toFixed(2)}</span>
+                <div class="opacity-0 group-hover:opacity-100 absolute inset-0 bg-slate-900/90 flex items-center justify-center gap-1 transition-opacity duration-150">
+                    <button onclick="addToBasket(${s}, 'CE', 'BUY', ${ce.ltp}, '${expiry}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-2 py-0.5 rounded text-[10px] transition-colors shadow-sm">B</button>
+                    <button onclick="addToBasket(${s}, 'CE', 'SELL', ${ce.ltp}, '${expiry}')" class="bg-rose-500 hover:bg-rose-400 text-slate-950 font-extrabold px-2 py-0.5 rounded text-[10px] transition-colors shadow-sm">S</button>
+                </div>
+            </div>` : '—';
+
+        const peLtpMarkup = pe.ltp ? `
+            <div class="flex items-center justify-between h-full w-full">
+                <span>${pe.ltp.toFixed(2)}</span>
+                <div class="opacity-0 group-hover:opacity-100 absolute inset-0 bg-slate-900/90 flex items-center justify-center gap-1 transition-opacity duration-150">
+                    <button onclick="addToBasket(${s}, 'PE', 'BUY', ${pe.ltp}, '${expiry}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-2 py-0.5 rounded text-[10px] transition-colors shadow-sm">B</button>
+                    <button onclick="addToBasket(${s}, 'PE', 'SELL', ${pe.ltp}, '${expiry}')" class="bg-rose-500 hover:bg-rose-400 text-slate-950 font-extrabold px-2 py-0.5 rounded text-[10px] transition-colors shadow-sm">S</button>
+                </div>
+            </div>` : '—';
+
         return `
             <tr class="hover:bg-slate-900/40 border-b border-slate-900/60 ${atmClass}">
                 <td class="px-4 py-2 text-left text-slate-300 text-xs font-mono ${ceBgClass}">${ceOI}</td>
                 <td class="px-4 py-2 font-mono text-xs ${ceChangeColor} ${ceBgClass}">${ceOIChange}</td>
-                <td class="px-4 py-2 border-r border-slate-850/60 text-slate-400 text-xs font-mono ${ceBgClass}">${ceLtp}</td>
+                <td class="px-4 py-2 border-r border-slate-850/60 text-slate-400 text-xs font-mono ${ceBgClass} relative group select-none cursor-pointer min-w-[90px] h-[34px]">${ceLtpMarkup}</td>
                 
                 <td class="px-4 py-2 bg-slate-900/40 font-mono align-middle select-all">${strikeLabel}</td>
                 
-                <td class="px-4 py-2 border-l border-slate-850/60 text-slate-400 text-xs font-mono ${peBgClass}">${peLtp}</td>
+                <td class="px-4 py-2 border-l border-slate-850/60 text-slate-400 text-xs font-mono ${peBgClass} relative group select-none cursor-pointer min-w-[90px] h-[34px]">${peLtpMarkup}</td>
                 <td class="px-4 py-2 font-mono text-xs ${peChangeColor} ${peBgClass}">${peOIChange}</td>
                 <td class="px-4 py-2 text-right text-slate-300 text-xs font-mono ${peBgClass}">${peOI}</td>
             </tr>`;
@@ -788,3 +811,655 @@ function toggleBeginnerGuide() {
         chevron.classList.remove('rotate-180');
     }
 }
+
+// ==========================================
+// Virtual Strategy Builder & Payoff Engine
+// ==========================================
+
+let strategyBasket = [];
+let payoffChartRef = null;
+let targetSpotPrice = 0;
+let isDrawerExpanded = false;
+
+function getLotSize(symbol) {
+    if (!symbol) return 50;
+    const s = symbol.toUpperCase();
+    if (s.includes('BANKNIFTY')) return 15;
+    if (s.includes('FINNIFTY')) return 40;
+    if (s.includes('NIFTY')) return 50;
+    return 50;
+}
+
+function addToBasket(strike, type, action, ltp, expiry) {
+    const symbol = currentAnalysisData?.symbol || 'NIFTY';
+    const lotSize = getLotSize(symbol);
+    
+    // Unique ID for the leg
+    const id = `${strike}_${type}_${action}_${expiry}`;
+    
+    // Check if duplicate leg exists
+    const existing = strategyBasket.find(l => l.id === id);
+    if (existing) {
+        existing.lots += 1;
+        existing.qty = existing.lots * existing.lotSize;
+    } else {
+        strategyBasket.push({
+            id: id,
+            strike: strike,
+            type: type,
+            action: action,
+            ltp: ltp,
+            expiry: expiry,
+            lots: 1,
+            lotSize: lotSize,
+            qty: lotSize
+        });
+    }
+    
+    renderBasket();
+    
+    // Slide up drawer if hidden
+    const drawer = document.getElementById('strategy-drawer');
+    if (drawer && strategyBasket.length === 1) {
+        drawer.classList.remove('translate-y-full');
+        // Expand automatically on first leg
+        expandDrawer();
+    }
+    
+    showStatus(`✓ Added ${action} ${strike} ${type} to strategy basket.`, 'emerald');
+}
+
+function deleteLeg(id) {
+    strategyBasket = strategyBasket.filter(l => l.id !== id);
+    renderBasket();
+    
+    if (strategyBasket.length === 0) {
+        clearBasket(null, true);
+    }
+}
+
+function updateLegLots(id, delta) {
+    const leg = strategyBasket.find(l => l.id === id);
+    if (!leg) return;
+    
+    leg.lots = Math.max(1, leg.lots + delta);
+    leg.qty = leg.lots * leg.lotSize;
+    renderBasket();
+}
+
+function toggleLegAction(id) {
+    const leg = strategyBasket.find(l => l.id === id);
+    if (!leg) return;
+    
+    leg.action = leg.action === 'BUY' ? 'SELL' : 'BUY';
+    const newId = `${leg.strike}_${leg.type}_${leg.action}_${leg.expiry}`;
+    
+    // Check if new id collides
+    const collision = strategyBasket.find(l => l.id === newId && l !== leg);
+    if (collision) {
+        collision.lots += leg.lots;
+        collision.qty = collision.lots * collision.lotSize;
+        strategyBasket = strategyBasket.filter(l => l !== leg);
+    } else {
+        leg.id = newId;
+    }
+    
+    renderBasket();
+}
+
+function clearBasket(e, showAnimation = true) {
+    if (e) e.stopPropagation();
+    strategyBasket = [];
+    renderBasket();
+    
+    collapseDrawer();
+    const drawer = document.getElementById('strategy-drawer');
+    if (drawer) {
+        if (!showAnimation) {
+            drawer.classList.add('transition-none');
+            drawer.classList.add('translate-y-full');
+            setTimeout(() => {
+                drawer.classList.remove('transition-none');
+            }, 50);
+        } else {
+            drawer.classList.add('translate-y-full');
+        }
+    }
+}
+
+function toggleDrawer() {
+    if (isDrawerExpanded) {
+        collapseDrawer();
+    } else {
+        expandDrawer();
+    }
+}
+
+function expandDrawer() {
+    const body = document.getElementById('drawer-body');
+    const chevron = document.getElementById('drawer-chevron');
+    if (body) body.classList.remove('hidden');
+    if (chevron) {
+        chevron.classList.add('rotate-180');
+    }
+    isDrawerExpanded = true;
+    document.body.classList.add('pb-80');
+}
+
+function collapseDrawer() {
+    const body = document.getElementById('drawer-body');
+    const chevron = document.getElementById('drawer-chevron');
+    if (body) body.classList.add('hidden');
+    if (chevron) {
+        chevron.classList.remove('rotate-180');
+    }
+    isDrawerExpanded = false;
+    document.body.classList.remove('pb-80');
+}
+
+function calculateStrategyStats() {
+    const stats = {
+        netPremium: 0,
+        maxProfit: 0,
+        maxLoss: 0,
+        rrRatio: 'N/A',
+        breakevens: []
+    };
+    
+    if (strategyBasket.length === 0) return stats;
+    
+    // 1. Net Premium
+    stats.netPremium = strategyBasket.reduce((sum, leg) => {
+        const premium = (leg.action === 'SELL' ? 1 : -1) * leg.ltp * leg.qty;
+        return sum + premium;
+    }, 0);
+    
+    // 2. Max Profit / Max Loss
+    const strikes = strategyBasket.map(l => l.strike);
+    const spot = currentAnalysisData?.spot_price || strikes[0] || 22000;
+    const highestStrike = Math.max(...strikes, spot);
+    const lowestStrike = Math.min(...strikes, spot);
+    const xHigh = highestStrike + (highestStrike - lowestStrike || 1000) * 1.5;
+    const xLow = Math.max(0, lowestStrike - (highestStrike - lowestStrike || 1000) * 0.5);
+    
+    const criticalPoints = [0, xLow, ...strikes, xHigh];
+    const pnlValues = criticalPoints.map(x => getPayoffAt(x));
+    
+    const slopeHigh = strategyBasket.reduce((sum, leg) => {
+        if (leg.type === 'CE') {
+            return sum + (leg.action === 'BUY' ? 1 : -1) * leg.qty;
+        }
+        return sum;
+    }, 0);
+    
+    if (slopeHigh > 0) {
+        stats.maxProfit = Infinity;
+        stats.maxLoss = Math.abs(Math.min(0, ...pnlValues));
+    } else if (slopeHigh < 0) {
+        stats.maxProfit = Math.max(0, ...pnlValues);
+        stats.maxLoss = Infinity;
+    } else {
+        stats.maxProfit = Math.max(0, ...pnlValues);
+        stats.maxLoss = Math.abs(Math.min(0, ...pnlValues));
+    }
+    
+    // 3. Breakevens
+    stats.breakevens = calculateBreakevens();
+    
+    // 4. Risk Reward Ratio
+    if (stats.maxProfit === Infinity) {
+        stats.rrRatio = 'Unlimited Profit';
+    } else if (stats.maxLoss === Infinity) {
+        stats.rrRatio = 'Unlimited Risk';
+    } else if (stats.maxLoss === 0) {
+        stats.rrRatio = 'Risk-Free';
+    } else {
+        const ratio = stats.maxProfit / stats.maxLoss;
+        stats.rrRatio = `1 : ${ratio.toFixed(2)}`;
+    }
+    
+    return stats;
+}
+
+function renderBasket() {
+    const tbody = document.getElementById('drawer-legs-tbody');
+    const countBadge = document.getElementById('drawer-count-badge');
+    if (!tbody || !countBadge) return;
+    
+    countBadge.textContent = `${strategyBasket.length} Leg${strategyBasket.length === 1 ? '' : 's'}`;
+    
+    // Update drawer header subtitle with detected strategy name
+    const subtitle = document.querySelector('#strategy-drawer p');
+    if (subtitle) {
+        if (strategyBasket.length > 0) {
+            const strat = detectStrategy(strategyBasket);
+            subtitle.innerHTML = `<span class="text-emerald-400 font-semibold uppercase tracking-wider">${strat.name}</span> • Click to expand details or adjust legs`;
+        } else {
+            subtitle.textContent = 'Click to expand details or adjust strategy legs';
+        }
+    }
+    
+    if (strategyBasket.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-500 italic">No legs added. Hover over option matrix LTP and click B or S to build a strategy.</td></tr>`;
+        
+        document.getElementById('drawer-header-net-premium').textContent = '₹0.00';
+        document.getElementById('drawer-header-max-profit').textContent = '₹0.00';
+        document.getElementById('drawer-header-max-loss').textContent = '₹0.00';
+        return;
+    }
+    
+    tbody.innerHTML = strategyBasket.map(leg => {
+        const isBuy = leg.action === 'BUY';
+        const actionClass = isBuy 
+            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20' 
+            : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20';
+        
+        const typeClass = leg.type === 'CE' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300';
+        const legNetPremium = (isBuy ? -1 : 1) * leg.ltp * leg.qty;
+        const premiumText = (legNetPremium >= 0 ? '+' : '-') + '₹' + Math.abs(legNetPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
+        const premiumColor = legNetPremium >= 0 ? 'text-emerald-400' : 'text-slate-350';
+        
+        return `
+            <tr class="hover:bg-slate-900/50 border-b border-slate-800/40">
+                <td class="py-3">
+                    <button onclick="toggleLegAction('${leg.id}')" class="px-2.5 py-0.5 rounded text-[10px] font-bold tracking-wider transition-colors ${actionClass}">
+                        ${leg.action}
+                    </button>
+                </td>
+                <td class="py-3">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeClass}">
+                        ${leg.type}
+                    </span>
+                </td>
+                <td class="py-3 font-bold text-white">${leg.strike.toLocaleString()}</td>
+                <td class="py-3 text-slate-400 text-xs">${leg.expiry}</td>
+                <td class="py-3 text-slate-400 text-xs">₹${leg.ltp.toFixed(2)}</td>
+                <td class="py-3 text-center">
+                    <div class="inline-flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5">
+                        <button onclick="updateLegLots('${leg.id}', -1)" class="w-4 h-4 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors">-</button>
+                        <span class="w-6 text-center font-bold font-mono text-[11px] text-white">${leg.lots}</span>
+                        <button onclick="updateLegLots('${leg.id}', 1)" class="w-4 h-4 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors">+</button>
+                    </div>
+                </td>
+                <td class="py-3 text-right text-slate-450 text-xs">${leg.qty.toLocaleString()}</td>
+                <td class="py-3 text-right font-bold text-xs ${premiumColor}">${premiumText}</td>
+                <td class="py-3 text-center">
+                    <button onclick="deleteLeg('${leg.id}')" class="text-slate-500 hover:text-rose-450 transition-colors w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center mx-auto">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    const stats = calculateStrategyStats();
+    
+    const premiumText = (stats.netPremium >= 0 ? '+' : '-') + '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
+    const headerPremiumEl = document.getElementById('drawer-header-net-premium');
+    headerPremiumEl.textContent = premiumText;
+    if (stats.netPremium >= 0) {
+        headerPremiumEl.className = 'font-bold text-emerald-400';
+    } else {
+        headerPremiumEl.className = 'font-bold text-white';
+    }
+    
+    document.getElementById('drawer-header-max-profit').textContent = stats.maxProfit === Infinity ? 'Unlimited' : '₹' + stats.maxProfit.toLocaleString(undefined, {minimumFractionDigits: 2});
+    document.getElementById('drawer-header-max-loss').textContent = stats.maxLoss === Infinity ? 'Unlimited' : '₹' + stats.maxLoss.toLocaleString(undefined, {minimumFractionDigits: 2});
+}
+
+function getPayoffAt(X) {
+    return strategyBasket.reduce((sum, leg) => {
+        let intrinsic = 0;
+        if (leg.type === 'CE') {
+            intrinsic = Math.max(0, X - leg.strike);
+        } else {
+            intrinsic = Math.max(0, leg.strike - X);
+        }
+        let unitPnl = 0;
+        if (leg.action === 'BUY') {
+            unitPnl = intrinsic - leg.ltp;
+        } else {
+            unitPnl = leg.ltp - intrinsic;
+        }
+        return sum + (unitPnl * leg.qty);
+    }, 0);
+}
+
+function calculateBreakevens() {
+    const strikes = strategyBasket.map(l => l.strike);
+    if (strikes.length === 0) return [];
+    
+    const spot = currentAnalysisData?.spot_price || strikes[0] || 22000;
+    const highestStrike = Math.max(...strikes, spot);
+    const lowestStrike = Math.min(...strikes, spot);
+    const xHigh = highestStrike + (highestStrike - lowestStrike || 1000) * 1.5;
+    
+    const sortedStrikes = [...new Set(strikes)].sort((a, b) => a - b);
+    const points = [0, ...sortedStrikes, xHigh];
+    const breakevens = [];
+    
+    for (let i = 0; i < points.length - 1; i++) {
+        const A = points[i];
+        const B = points[i + 1];
+        const pnlA = getPayoffAt(A);
+        const pnlB = getPayoffAt(B);
+        
+        if (Math.abs(pnlA) < 0.01) {
+            breakevens.push(A);
+        }
+        
+        if (pnlA * pnlB < 0) {
+            const xBe = A + (B - A) * (0 - pnlA) / (pnlB - pnlA);
+            breakevens.push(xBe);
+        }
+    }
+    
+    const uniqueBes = [];
+    breakevens.sort((a, b) => a - b).forEach(be => {
+        if (uniqueBes.length === 0 || be - uniqueBes[uniqueBes.length - 1] > 0.5) {
+            uniqueBes.push(be);
+        }
+    });
+    
+    return uniqueBes;
+}
+
+function detectStrategy(legs) {
+    if (!legs || legs.length === 0) return { name: 'No Strategy', badge: 'NONE' };
+    
+    const calls = legs.filter(l => l.type === 'CE');
+    const puts = legs.filter(l => l.type === 'PE');
+    
+    if (legs.length === 1) {
+        const leg = legs[0];
+        if (leg.type === 'CE') {
+            return leg.action === 'BUY' 
+                ? { name: 'Long Call Option', badge: 'L-CALL' }
+                : { name: 'Naked Call Writing', badge: 'S-CALL' };
+        } else {
+            return leg.action === 'BUY' 
+                ? { name: 'Long Put Option', badge: 'L-PUT' }
+                : { name: 'Naked Put Writing', badge: 'S-PUT' };
+        }
+    }
+    
+    if (legs.length === 2) {
+        if (calls.length === 2) {
+            const buyLeg = calls.find(l => l.action === 'BUY');
+            const sellLeg = calls.find(l => l.action === 'SELL');
+            if (buyLeg && sellLeg) {
+                return buyLeg.strike < sellLeg.strike
+                    ? { name: 'Bull Call Spread', badge: 'BULL-CALL' }
+                    : { name: 'Bear Call Spread', badge: 'BEAR-CALL' };
+            }
+        }
+        if (puts.length === 2) {
+            const buyLeg = puts.find(l => l.action === 'BUY');
+            const sellLeg = puts.find(l => l.action === 'SELL');
+            if (buyLeg && sellLeg) {
+                return buyLeg.strike > sellLeg.strike
+                    ? { name: 'Bear Put Spread', badge: 'BEAR-PUT' }
+                    : { name: 'Bull Put Spread', badge: 'BULL-PUT' };
+            }
+        }
+        if (calls.length === 1 && puts.length === 1) {
+            const cLeg = calls[0];
+            const pLeg = puts[0];
+            if (cLeg.action === 'BUY' && pLeg.action === 'BUY') {
+                return cLeg.strike === pLeg.strike
+                    ? { name: 'Long Straddle', badge: 'L-STRADDLE' }
+                    : { name: 'Long Strangle', badge: 'L-STRANGLE' };
+            }
+            if (cLeg.action === 'SELL' && pLeg.action === 'SELL') {
+                return cLeg.strike === pLeg.strike
+                    ? { name: 'Short Straddle', badge: 'S-STRADDLE' }
+                    : { name: 'Short Strangle', badge: 'S-STRANGLE' };
+            }
+        }
+    }
+    
+    if (legs.length === 4) {
+        if (calls.length === 2 && puts.length === 2) {
+            const cBuy = calls.find(l => l.action === 'BUY');
+            const cSell = calls.find(l => l.action === 'SELL');
+            const pBuy = puts.find(l => l.action === 'BUY');
+            const pSell = puts.find(l => l.action === 'SELL');
+            
+            if (cBuy && cSell && pBuy && pSell) {
+                if (pBuy.strike < pSell.strike && pSell.strike <= cSell.strike && cSell.strike < cBuy.strike) {
+                    return pSell.strike === cSell.strike
+                        ? { name: 'Iron Butterfly Strategy', badge: 'IRON-BUTT' }
+                        : { name: 'Iron Condor Strategy', badge: 'IRON-COND' };
+                }
+            }
+        }
+    }
+    
+    return { name: 'Custom Options Strategy', badge: 'CUSTOM' };
+}
+
+function analyzeStrategyPayoff(e) {
+    if (e) e.stopPropagation();
+    if (strategyBasket.length === 0) return;
+    
+    const modal = document.getElementById('payoff-modal');
+    const content = document.getElementById('payoff-modal-content');
+    if (!modal || !content) return;
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+    
+    const strat = detectStrategy(strategyBasket);
+    document.getElementById('payoff-strategy-name').textContent = strat.name;
+    const badge = document.getElementById('payoff-strategy-badge');
+    badge.textContent = strat.badge;
+    
+    const spot = currentAnalysisData?.spot_price || strategyBasket[0].strike;
+    targetSpotPrice = spot;
+    
+    const strikes = strategyBasket.map(l => l.strike);
+    const minStrike = Math.min(...strikes, spot);
+    const maxStrike = Math.max(...strikes, spot);
+    const padding = Math.max(spot * 0.05, (maxStrike - minStrike || spot * 0.1) * 0.4);
+    
+    const minSpot = Math.max(0, minStrike - padding);
+    const maxSpot = maxStrike + padding;
+    
+    const slider = document.getElementById('target-spot-slider');
+    slider.min = minSpot.toFixed(0);
+    slider.max = maxSpot.toFixed(0);
+    slider.value = spot.toFixed(0);
+    
+    document.getElementById('slider-min-label').textContent = minSpot.toFixed(0);
+    document.getElementById('slider-max-label').textContent = maxSpot.toFixed(0);
+    document.getElementById('slider-current-spot').textContent = `Spot: ${spot.toFixed(2)}`;
+    
+    document.getElementById('target-spot-input').value = spot.toFixed(2);
+    
+    const stats = calculateStrategyStats();
+    
+    document.getElementById('payoff-max-profit').textContent = stats.maxProfit === Infinity ? 'Unlimited' : '₹' + stats.maxProfit.toLocaleString(undefined, {minimumFractionDigits: 2});
+    document.getElementById('payoff-max-loss').textContent = stats.maxLoss === Infinity ? 'Unlimited' : '₹' + stats.maxLoss.toLocaleString(undefined, {minimumFractionDigits: 2});
+    
+    const breakevensText = stats.breakevens.length > 0 
+        ? stats.breakevens.map(be => be.toFixed(2)).join(', ') 
+        : 'None';
+    document.getElementById('payoff-breakeven').textContent = breakevensText;
+    document.getElementById('payoff-breakeven').title = breakevensText;
+    
+    const premiumText = (stats.netPremium >= 0 ? '+' : '-') + '₹' + Math.abs(stats.netPremium).toLocaleString(undefined, {minimumFractionDigits: 2});
+    const premiumEl = document.getElementById('payoff-net-premium');
+    premiumEl.textContent = premiumText;
+    if (stats.netPremium >= 0) {
+        premiumEl.className = 'text-xs font-bold text-emerald-450 font-mono text-emerald-400';
+    } else {
+        premiumEl.className = 'text-xs font-bold text-white font-mono';
+    }
+    
+    document.getElementById('payoff-rr').textContent = stats.rrRatio;
+    
+    updateTargetPnL();
+    renderPayoffChart(minSpot, maxSpot);
+}
+
+function renderPayoffChart(minX, maxX) {
+    const canvas = document.getElementById('payoff-canvas');
+    if (!canvas) return;
+    
+    if (payoffChartRef) payoffChartRef.destroy();
+    
+    const labels = [];
+    const pnlData = [];
+    const step = (maxX - minX) / 100;
+    
+    for (let i = 0; i <= 100; i++) {
+        const x = minX + i * step;
+        labels.push(x.toFixed(2));
+        pnlData.push(getPayoffAt(x));
+    }
+    
+    const ctx = canvas.getContext('2d');
+    payoffChartRef = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Profit / Loss (₹)',
+                data: pnlData,
+                borderColor: 'rgb(56, 189, 248)',
+                borderWidth: 2.5,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: 'rgb(255, 255, 255)',
+                fill: {
+                    target: 'origin',
+                    above: 'rgba(16, 185, 129, 0.08)',
+                    below: 'rgba(244, 63, 94, 0.08)'
+                },
+                tension: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Spot Price at Expiry', color: '#94a3b8', font: { size: 10, weight: 'bold' } },
+                    ticks: { color: '#64748b', font: { size: 9, family: 'monospace' } },
+                    grid: { color: 'rgba(30, 41, 59, 0.5)' }
+                },
+                y: {
+                    title: { display: true, text: 'Projected Profit / Loss', color: '#94a3b8', font: { size: 10, weight: 'bold' } },
+                    ticks: { 
+                        color: '#64748b', 
+                        font: { size: 9, family: 'monospace' },
+                        callback: function(value) {
+                            return (value >= 0 ? '+' : '') + '₹' + value.toLocaleString();
+                        }
+                    },
+                    grid: { color: 'rgba(30, 41, 59, 0.5)' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.raw;
+                            return 'P&L: ' + (val >= 0 ? '₹' : '-₹') + Math.abs(val).toLocaleString(undefined, {minimumFractionDigits: 2});
+                        },
+                        title: function(context) {
+                            return 'Spot Price: ' + parseFloat(context[0].label).toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function closePayoffModal() {
+    const modal = document.getElementById('payoff-modal');
+    const content = document.getElementById('payoff-modal-content');
+    if (!modal || !content) return;
+    
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function updateTargetSpotFromSlider(val) {
+    targetSpotPrice = parseFloat(val);
+    document.getElementById('target-spot-input').value = targetSpotPrice.toFixed(2);
+    updateTargetPnL();
+}
+
+function updateTargetSpotFromInput(val) {
+    const parsed = parseFloat(val);
+    if (isNaN(parsed) || parsed < 0) return;
+    targetSpotPrice = parsed;
+    document.getElementById('target-spot-slider').value = targetSpotPrice;
+    updateTargetPnL();
+}
+
+function updateTargetPnL() {
+    if (!strategyBasket || strategyBasket.length === 0) return;
+    const spot = currentAnalysisData?.spot_price || 22000;
+    const pnl = getPayoffAt(targetSpotPrice);
+    
+    const pctChange = ((targetSpotPrice - spot) / spot) * 100;
+    const pctEl = document.getElementById('target-percentage');
+    if (pctEl) {
+        pctEl.textContent = (pctChange >= 0 ? '+' : '') + pctChange.toFixed(2) + '%';
+        if (pctChange >= 0) {
+            pctEl.className = 'text-[9px] font-mono bg-emerald-950/50 border border-emerald-900 px-1.5 py-0.5 rounded-md text-emerald-450 text-emerald-400';
+        } else {
+            pctEl.className = 'text-[9px] font-mono bg-rose-950/50 border border-rose-900 px-1.5 py-0.5 rounded-md text-rose-450 text-rose-400';
+        }
+    }
+    
+    const pnlEl = document.getElementById('target-pnl');
+    if (pnlEl) {
+        pnlEl.textContent = (pnl >= 0 ? '+₹' : '-₹') + Math.abs(pnl).toLocaleString(undefined, {minimumFractionDigits: 2});
+        if (pnl >= 0) {
+            pnlEl.className = 'text-base font-black font-mono text-emerald-400';
+        } else {
+            pnlEl.className = 'text-base font-black font-mono text-rose-400';
+        }
+    }
+    
+    const roiEl = document.getElementById('target-roi');
+    if (roiEl) {
+        const stats = calculateStrategyStats();
+        if (stats.netPremium < 0) {
+            const capital = Math.abs(stats.netPremium);
+            const roi = (pnl / capital) * 100;
+            roiEl.textContent = 'ROI: ' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
+        } else {
+            let writtenContracts = 0;
+            strategyBasket.forEach(l => {
+                if (l.action === 'SELL') {
+                    writtenContracts += l.lots;
+                }
+            });
+            if (writtenContracts > 0) {
+                const capital = writtenContracts * 150000;
+                const roi = (pnl / capital) * 100;
+                roiEl.textContent = 'ROI: ' + (roi >= 0 ? '+' : '') + roi.toFixed(2) + '% (Est. Margin)';
+            } else {
+                roiEl.textContent = 'ROI: —';
+            }
+        }
+    }
+}
+

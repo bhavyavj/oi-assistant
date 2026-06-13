@@ -358,6 +358,178 @@
 
     </div>
 
+    <!-- Floating Strategy Builder Basket Drawer -->
+    <div id="strategy-drawer" class="fixed bottom-0 left-0 right-0 z-45 transform translate-y-full transition-transform duration-300 ease-in-out bg-slate-950/90 border-t border-slate-800 backdrop-blur-md shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <!-- Drawer Header -->
+        <div onclick="toggleDrawer()" class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer select-none">
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400 shrink-0">
+                    <i class="fa-solid fa-layer-group text-base"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white text-sm">Virtual Strategy Builder <span id="drawer-count-badge" class="ml-2 px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full text-[10px] font-mono">0 Legs</span></h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Click to expand details or adjust strategy legs</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-between md:justify-end gap-x-6 gap-y-2 w-full md:w-auto">
+                <!-- Summary Metrics (shown in header) -->
+                <div id="drawer-summary-strip" class="flex items-center gap-x-4 text-xs font-mono">
+                    <div class="text-slate-400">
+                        Net Premium: <span id="drawer-header-net-premium" class="font-bold text-white">₹0.00</span>
+                    </div>
+                    <div class="w-px h-3.5 bg-slate-800"></div>
+                    <div class="text-slate-400">
+                        Max Profit: <span id="drawer-header-max-profit" class="font-bold text-emerald-400">₹0.00</span>
+                    </div>
+                    <div class="w-px h-3.5 bg-slate-800"></div>
+                    <div class="text-slate-400">
+                        Max Loss: <span id="drawer-header-max-loss" class="font-bold text-rose-400">₹0.00</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-3 ml-auto md:ml-0">
+                    <button onclick="analyzeStrategyPayoff(event)" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/10">
+                        <i class="fa-solid fa-chart-line"></i><span>Analyze Payoff</span>
+                    </button>
+                    <button onclick="clearBasket(event)" class="text-slate-400 hover:text-rose-400 transition-colors px-3 py-2 rounded-xl hover:bg-slate-900 border border-slate-800 text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i><span>Clear</span>
+                    </button>
+                    <i class="fa-solid fa-chevron-up text-slate-400 transition-transform duration-300 ml-1" id="drawer-chevron"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Drawer Body (Collapsible list of legs) -->
+        <div id="drawer-body" class="max-h-[300px] overflow-y-auto border-t border-slate-800/80 max-w-7xl mx-auto px-6 py-4 hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-500 border-b border-slate-850 pb-2 uppercase tracking-wider font-bold text-[10px]">
+                            <th class="pb-3 pt-1">Action</th>
+                            <th class="pb-3 pt-1">Option</th>
+                            <th class="pb-3 pt-1">Strike</th>
+                            <th class="pb-3 pt-1">Expiry</th>
+                            <th class="pb-3 pt-1">LTP (Premium)</th>
+                            <th class="pb-3 pt-1 text-center">Lots</th>
+                            <th class="pb-3 pt-1 text-right">Qty</th>
+                            <th class="pb-3 pt-1 text-right">Total Premium</th>
+                            <th class="pb-3 pt-1 text-center">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drawer-legs-tbody" class="divide-y divide-slate-800/60 font-mono">
+                        <!-- Dynamic legs go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payoff Chart Modal -->
+    <div id="payoff-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900/95 border border-slate-800 rounded-3xl w-full max-w-6xl h-[92vh] md:h-[85vh] flex flex-col overflow-hidden shadow-2xl shadow-emerald-500/5 transition-transform duration-300 scale-95" id="payoff-modal-content">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/40">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400">
+                        <i class="fa-solid fa-chart-area text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <span id="payoff-strategy-name">Options Strategy Payoff</span>
+                            <span id="payoff-strategy-badge" class="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-900 text-[9px] rounded-full font-mono font-bold tracking-wider uppercase">CUSTOM</span>
+                        </h3>
+                        <p class="text-[10px] text-slate-400" id="payoff-strategy-subtitle">Analysis of strategy outcomes at contract expiry</p>
+                    </div>
+                </div>
+                <button onclick="closePayoffModal()" class="text-slate-400 hover:text-white transition-colors w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-6 flex flex-col lg:flex-row gap-6">
+                <!-- Left: Chart Panel -->
+                <div class="flex-1 bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col min-h-[350px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                            <span>Payoff Profile (Profit/Loss vs. Spot Price)</span>
+                        </h4>
+                        <div class="text-[9px] text-slate-400 bg-slate-800/80 px-2 py-1 rounded font-mono border border-slate-700/50">X-Axis: Spot Price at Expiry</div>
+                    </div>
+                    <div class="flex-1 relative min-h-[280px]">
+                        <canvas id="payoff-canvas"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Right: Stats & Controls -->
+                <div class="w-full lg:w-[320px] flex flex-col gap-5">
+                    <!-- Strategy Summary Card -->
+                    <div class="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Strategy Metrics</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl">
+                                <span class="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Max Profit</span>
+                                <span id="payoff-max-profit" class="text-xs font-bold text-emerald-400 font-mono">₹0.00</span>
+                            </div>
+                            <div class="bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl">
+                                <span class="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Max Loss</span>
+                                <span id="payoff-max-loss" class="text-xs font-bold text-rose-400 font-mono">₹0.00</span>
+                            </div>
+                            <div class="bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl col-span-2">
+                                <span class="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Breakeven Points</span>
+                                <span id="payoff-breakeven" class="text-xs font-bold text-white font-mono block truncate mt-0.5">—</span>
+                            </div>
+                            <div class="bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl">
+                                <span class="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Net Premium</span>
+                                <span id="payoff-net-premium" class="text-xs font-bold text-white font-mono">₹0.00</span>
+                            </div>
+                            <div class="bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl">
+                                <span class="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Risk/Reward</span>
+                                <span id="payoff-rr" class="text-xs font-bold text-slate-300 font-mono">1:2</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Target Price Slider & Interactive P&L Calculator -->
+                    <div class="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">
+                            <span>Interactive Calculator</span>
+                            <span id="target-percentage" class="text-[9px] text-emerald-400 font-mono bg-emerald-950/50 border border-emerald-900 px-1.5 py-0.5 rounded-md">+0.00%</span>
+                        </h4>
+                        
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-slate-400">Target Price</span>
+                                <input type="number" id="target-spot-input" oninput="updateTargetSpotFromInput(this.value)" class="w-24 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-right text-xs font-bold text-white font-mono focus:border-emerald-500 outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                            <div class="relative py-1">
+                                <input type="range" id="target-spot-slider" min="0" max="100" step="0.1" oninput="updateTargetSpotFromSlider(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                            </div>
+                            <div class="flex justify-between text-[8px] text-slate-500 font-mono uppercase tracking-wider">
+                                <span id="slider-min-label">0</span>
+                                <span id="slider-current-spot" class="text-slate-400 font-bold">Spot</span>
+                                <span id="slider-max-label">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t border-slate-800/80 pt-3 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-white">Projected P&L</span>
+                                <p class="text-[9px] text-slate-400">Result at expiry</p>
+                            </div>
+                            <div class="text-right">
+                                <span id="target-pnl" class="text-base font-black font-mono text-emerald-400">₹0.00</span>
+                                <span id="target-roi" class="block text-[9px] text-slate-400 font-mono">ROI: 0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/app.js"></script>
 </body>
 </html>
