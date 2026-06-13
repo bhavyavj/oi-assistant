@@ -634,8 +634,8 @@ Provide a structured, readable markdown report with headers.`,
 	ctx := r.Context()
 	report, err := h.analyzer.CompletePrompt(ctx, prompt)
 	if err != nil {
-		jsonError(w, "failed generating AI report: "+err.Error(), http.StatusInternalServerError)
-		return
+		h.log.Warn("AI report generation failed, using rules-based report", "error", err)
+		report = generateRulesReport(analysis)
 	}
 
 	analysis.AIReport = report
@@ -643,5 +643,50 @@ Provide a structured, readable markdown report with headers.`,
 	_ = h.store.SaveAnalysis(ctx, symbol, analysis)
 
 	jsonOK(w, map[string]string{"ai_report": report})
+}
+
+func generateRulesReport(analysis *models.AnalyseResponse) string {
+	var builder strings.Builder
+	builder.WriteString("## Rules-Based Analyst Report *(LLM Offline)*\n\n")
+	
+	builder.WriteString(fmt.Sprintf("**Market Trend Bias:** The calculated sentiment bias is **%s**.\n\n", analysis.Metrics.Bias))
+	builder.WriteString(fmt.Sprintf("%s\n\n", analysis.Metrics.BiasReason))
+	
+	builder.WriteString("### Key Support & Resistance Boundaries\n")
+	builder.WriteString(fmt.Sprintf("- **Spot Price:** %.2f\n", analysis.SpotPrice))
+	builder.WriteString(fmt.Sprintf("- **Max Pain (Expiry Anchor):** %.0f\n", analysis.Metrics.MaxPain))
+	
+	if len(analysis.Metrics.TopPEStrikes) > 0 {
+		secondVal := 0.0
+		if len(analysis.Metrics.TopPEStrikes) > 1 {
+			secondVal = analysis.Metrics.TopPEStrikes[1]
+		}
+		builder.WriteString(fmt.Sprintf("- **Strong Floor Support (Put concentration):** %.0f (with secondary support at %.0f)\n", 
+			analysis.Metrics.TopPEStrikes[0], secondVal))
+	}
+	if len(analysis.Metrics.TopCEStrikes) > 0 {
+		secondVal := 0.0
+		if len(analysis.Metrics.TopCEStrikes) > 1 {
+			secondVal = analysis.Metrics.TopCEStrikes[1]
+		}
+		builder.WriteString(fmt.Sprintf("- **Strong Ceiling Resistance (Call concentration):** %.0f (with secondary resistance at %.0f)\n", 
+			analysis.Metrics.TopCEStrikes[0], secondVal))
+	}
+	
+	builder.WriteString("\n### Tactical Trading Guidance\n")
+	switch analysis.Metrics.Bias {
+	case "Bullish":
+		builder.WriteString("- **Strategy Outlook:** Option writers are aggressively putting floors below the spot price. Put premiums are decaying fast due to heavy writing.\n")
+		builder.WriteString(fmt.Sprintf("- **Action Plan:** Look for long entries or sell put spreads below key support levels (e.g. below the Max Pain level of %.0f).\n", analysis.Metrics.MaxPain))
+	case "Bearish":
+		builder.WriteString("- **Strategy Outlook:** Call writers have established high ceilings, indicating the market expects resistance on rallies. Spot price is under pressure.\n")
+		builder.WriteString("- **Action Plan:** Consider hedged short positions or buying put spreads. Avoid selling naked calls due to outlier risks.\n")
+	default:
+		builder.WriteString(fmt.Sprintf("- **Strategy Outlook:** Total open interest is balanced between calls and puts. The price index is likely to pin close to the Max Pain strike of %.0f.\n", analysis.Metrics.MaxPain))
+		builder.WriteString("- **Action Plan:** Sideways range-bound trading is expected. Consider selling credit spreads outside the support/resistance boundaries (e.g. Iron Condor strategy).\n")
+	}
+	
+	builder.WriteString("\n*Disclaimer: This report is automatically generated based on static option chain mathematics and does not constitute financial advice.*")
+	return builder.String()
 }
 

@@ -493,6 +493,11 @@ function renderMatrixTable() {
         const peOIChange = pe.oi_change_pct ? `${pe.oi_change_pct > 0 ? '+' : ''}${pe.oi_change_pct.toFixed(1)}%` : '—';
         const peLtp = pe.ltp ? pe.ltp.toFixed(2) : '—';
 
+        const isCeITM = spot > 0 && s < spot;
+        const isPeITM = spot > 0 && s > spot;
+        const ceBgClass = isCeITM ? 'bg-slate-900/70' : '';
+        const peBgClass = isPeITM ? 'bg-slate-900/70' : '';
+
         const isATM = s === atmStrike;
         const atmClass = isATM ? 'bg-emerald-500/10 border-y border-emerald-500/30' : '';
         const strikeLabel = isATM ? `<span class="bg-emerald-500 text-slate-950 font-bold px-1.5 py-0.5 rounded text-[9px] tracking-wide animate-pulse">ATM</span><span class="block text-slate-100 font-bold text-xs mt-0.5">${s}</span>` : `<span class="text-slate-400 font-bold text-xs">${s}</span>`;
@@ -502,15 +507,15 @@ function renderMatrixTable() {
 
         return `
             <tr class="hover:bg-slate-900/40 border-b border-slate-900/60 ${atmClass}">
-                <td class="px-4 py-2 text-left text-slate-300 text-xs font-mono">${ceOI}</td>
-                <td class="px-4 py-2 font-mono text-xs ${ceChangeColor}">${ceOIChange}</td>
-                <td class="px-4 py-2 border-r border-slate-850/60 text-slate-400 text-xs font-mono">${ceLtp}</td>
+                <td class="px-4 py-2 text-left text-slate-300 text-xs font-mono ${ceBgClass}">${ceOI}</td>
+                <td class="px-4 py-2 font-mono text-xs ${ceChangeColor} ${ceBgClass}">${ceOIChange}</td>
+                <td class="px-4 py-2 border-r border-slate-850/60 text-slate-400 text-xs font-mono ${ceBgClass}">${ceLtp}</td>
                 
                 <td class="px-4 py-2 bg-slate-900/40 font-mono align-middle select-all">${strikeLabel}</td>
                 
-                <td class="px-4 py-2 border-l border-slate-850/60 text-slate-400 text-xs font-mono">${peLtp}</td>
-                <td class="px-4 py-2 font-mono text-xs ${peChangeColor}">${peOIChange}</td>
-                <td class="px-4 py-2 text-right text-slate-300 text-xs font-mono">${peOI}</td>
+                <td class="px-4 py-2 border-l border-slate-850/60 text-slate-400 text-xs font-mono ${peBgClass}">${peLtp}</td>
+                <td class="px-4 py-2 font-mono text-xs ${peChangeColor} ${peBgClass}">${peOIChange}</td>
+                <td class="px-4 py-2 text-right text-slate-300 text-xs font-mono ${peBgClass}">${peOI}</td>
             </tr>`;
     }).join('');
 }
@@ -766,5 +771,20 @@ function toggleTheme() {
     if (icon) {
         icon.classList.toggle('fa-moon', html.classList.contains('dark'));
         icon.classList.toggle('fa-sun', !html.classList.contains('dark'));
+    }
+}
+
+function toggleBeginnerGuide() {
+    const content = document.getElementById('beginner-guide-content');
+    const chevron = document.getElementById('guide-chevron');
+    if (!content || !chevron) return;
+    
+    const isHidden = content.classList.contains('hidden');
+    if (isHidden) {
+        content.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
     }
 }
